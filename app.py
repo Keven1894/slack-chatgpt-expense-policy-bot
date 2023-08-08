@@ -3,16 +3,25 @@ import os
 import json
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from llama_index import GPTSimpleVectorIndex
+from llama_index import VectorStoreIndex
+from llama_index import StorageContext, load_index_from_storage
 
 # Initialize Slack App with the provided bot token
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
 # Load the GPT index from disk
-index = GPTSimpleVectorIndex.load_from_disk('expense-policy-index')
+#index = GPTSimpleVectorIndex.load_from_disk('expense-policy-index')
+# rebuild storage context
+storage_context = StorageContext.from_defaults(persist_dir="storage")
+
+# load index
+index = load_index_from_storage(storage_context)
 
 # Test the index with a query and print the result
-print(index.query('Who are the main approvers for contractor expenses?'))
+query_engine = index.as_query_engine()
+response = query_engine.query("Who are the main approvers for contractor expenses?")
+print(response)
+#print(index.query('Who are the main approvers for contractor expenses?'))
 
 # Listens to any incoming messages
 @app.message("")
@@ -22,7 +31,9 @@ def message_all(message, say):
     
     # Query the index with the message text and get a response
     text = message['text']
-    response = index.query(text)
+    query_engine = index.as_query_engine()
+    response = query_engine.query(text)
+    #response = index.query(text)
     
     # Extract the desired message and sources from the response object
     message = str(response)  # Convert the 'Response' object to a string
